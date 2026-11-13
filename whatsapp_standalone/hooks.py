@@ -228,6 +228,12 @@ app_license = "mit"
 # ----------------
 # before_request = ["whatsapp_standalone.utils.before_request"]
 before_request = ["whatsapp_standalone.overrides.crm_whatsapp.use_unchecked_assignee_lookup"]
+
+doc_events = {
+	"WhatsApp Notification Log": {
+		"after_insert": "whatsapp_standalone.echoes.sync_message_echoes",
+	}
+}
 # after_request = ["whatsapp_standalone.utils.after_request"]
 
 # Job Events

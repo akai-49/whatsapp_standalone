@@ -42,10 +42,20 @@ This app applies the upstream fix ([frappe/crm#3214](https://github.com/frappe/c
 
 Remove the hook when your CRM version includes frappe/crm#3214.
 
+**Messages sent from the WhatsApp Business mobile app (Coexistence)**
+
+In Coexistence mode Meta reports each message typed in the Business app as an `smb_message_echoes` webhook. `frappe_whatsapp` logs it but does not save it, so the message is missing from the CRM WhatsApp tab.
+
+This app saves each echo as an outgoing `WhatsApp Message` (`whatsapp_standalone/echoes.py`, an `after_insert` hook on `WhatsApp Notification Log`). The message is not sent to Meta again. A one-time patch saves the echoes that are already in the log.
+
+- Requirement: the Meta app must be subscribed to the `smb_message_echoes` webhook field.
+- Supported: text messages and reactions.
+- Not supported yet: media sent from the Business app, and the `history` sync of older chats.
+
 ### Tests
 
 The tests use stub modules, so no site is needed:
 
 ```bash
-env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp
+env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes
 ```
