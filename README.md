@@ -31,3 +31,21 @@ Pre-commit is configured to use the following tools for checking and formatting 
 ### License
 
 mit
+
+### What it does
+
+**Incoming WhatsApp replies on Frappe CRM version-16**
+
+With `frappe_whatsapp` and Frappe CRM v16.0.3, a reply from a number that matches a lead or deal is not saved. The webhook runs as Guest, CRM's `notify_agent` checks read permission on the lead, and the request fails with HTTP 403.
+
+This app applies the upstream fix ([frappe/crm#3214](https://github.com/frappe/crm/pull/3214)) at runtime through a `before_request` hook (`whatsapp_standalone/overrides/crm_whatsapp.py`). There is nothing to configure. It adds no Guest permissions, and the hook does nothing when CRM is not installed or already has the fix.
+
+Remove the hook when your CRM version includes frappe/crm#3214.
+
+### Tests
+
+The tests use stub modules, so no site is needed:
+
+```bash
+env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp
+```
