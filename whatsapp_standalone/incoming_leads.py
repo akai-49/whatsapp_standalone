@@ -71,8 +71,13 @@ def _create_lead_under_lock(doc, digits):
 	frappe.db.after_commit.add(lambda: _release_lock(lock))
 	frappe.db.after_rollback.add(lambda: _release_lock(lock))
 
-	if not _record_exists(digits):
-		frappe.get_doc(_build_lead_values(doc, digits)).insert(ignore_permissions=True)
+	record = _find_record(digits)
+	if record is None:
+		lead = frappe.get_doc(_build_lead_values(doc, digits))
+		lead.insert(ignore_permissions=True)
+		record = (LEAD_DOCTYPE, lead.name)
+	if not doc.get("reference_name"):
+		_link_message(doc, *record)
 
 
 def _normalise_number(sender):
@@ -95,20 +100,35 @@ def _digits_only_sql(column):
 	return expression
 
 
-def _record_exists(digits):
-	"""Return True if a CRM Lead or CRM Deal already has this number in `mobile_no` or `phone`."""
+def _find_record(digits):
+	"""Return `(doctype, name)` of the CRM Lead, else CRM Deal, that has this number, or None.
+
+	The number is matched in `mobile_no` and in `phone`.
+	"""
 	# ponytail: exact match on the full digit string; a number saved without its country code
 	# is not matched. Add a suffix match if that causes duplicate leads. replace() also defeats
 	# any index on the number columns, so this scans both tables; store a digits-only column if
 	# they grow to hundreds of thousands of rows.
 	conditions = " or ".join(f"{_digits_only_sql(column)} = %s" for column in NUMBER_COLUMNS)
-	return any(
-		frappe.db.sql(
+	for doctype in (LEAD_DOCTYPE, DEAL_DOCTYPE):
+		rows = frappe.db.sql(
 			f"select name from `tab{doctype}` where {conditions} limit 1",
 			(digits,) * len(NUMBER_COLUMNS),
 		)
-		for doctype in (LEAD_DOCTYPE, DEAL_DOCTYPE)
-	)
+		if rows:
+			return doctype, rows[0][0]
+	return None
+
+
+def _link_message(doc, doctype, name):
+	"""Point the message at its lead or deal.
+
+	CRM does this while validating a message, which is before the lead of a new number exists.
+	Without it the message is missing from the WhatsApp tab and the timeline of the lead.
+	"""
+	values = {"reference_doctype": doctype, "reference_name": name}
+	frappe.db.set_value("WhatsApp Message", doc.name, values, update_modified=False)
+	doc.update(values)
 
 
 def _build_lead_values(doc, digits):

@@ -57,6 +57,7 @@ This app saves each echo as an outgoing `WhatsApp Message` (`whatsapp_standalone
 The first message from a number that is not yet a CRM Lead or CRM Deal creates a `CRM Lead` (`whatsapp_standalone/incoming_leads.py`, an `after_insert` hook on `WhatsApp Message`).
 
 - The lead gets the sender's WhatsApp profile name (HTML removed, cut to 140 characters; the number if there is no usable name), `mobile_no` as `+<digits>`, source `WhatsApp` and status `New`.
+- The message is linked to the lead (or the existing lead or deal). CRM links a message when it validates it, which is before the lead of a new number exists; without this link the first message is missing from the WhatsApp tab.
 - A number is matched against `mobile_no` and `phone` of every Lead and Deal, ignoring spaces and the characters `+ - ( ) .`. A match means no new lead.
 - A Redis lock per number makes the check and the insert one step. It is held until the request transaction commits, so two messages that arrive together cannot create two leads. A second message waits at most 2 seconds for the lock; if it cannot get it, it is logged and skipped.
 - A failure is rolled back and written to the Error Log as "WhatsApp lead create failed". The webhook still succeeds, so Meta does not retry.
@@ -71,16 +72,37 @@ Records shipped with the app (`whatsapp_standalone/fixtures/`):
 
 Frappe imports fixtures on `bench install-app` and again on every `bench migrate`. A change made to these two records in the UI is replaced by the next migrate. Edit the fixture files instead, or run `bench export-fixtures` after a UI change.
 
-Requirements: Frappe CRM is installed, and the `New` lead status and the `Sales Manager` role exist. If CRM is not installed, Frappe skips the fixtures and the hook does nothing.
+Requirements: Frappe CRM is installed, and the `New` lead status and the `Sales Manager` role exist. Without CRM the hook does nothing. Install CRM before this app: the fixtures need the CRM doctypes, and a bench without CRM has not been tested.
 
 The notification reaches the lead owner only if the lead already has an owner when it is created. A lead created from a message has none, so at first only the `Sales Manager` role is notified.
 
 Remove this module and its hook when Frappe CRM creates leads from WhatsApp messages by itself.
+
+**WhatsApp and shared-mailbox email in the Activity timeline**
+
+The Activity tab of a Lead or Deal draws only versions, comments, calls and emails (`Communication` records). WhatsApp messages have their own tab, and emails of a shared mailbox are missing when they are not linked to the lead.
+
+*WhatsApp* (`whatsapp_standalone/whatsapp_timeline.py`, a second `after_insert` hook on `WhatsApp Message`, run after the lead is created): each message that belongs to a Lead or Deal is saved once as a `Communication` with medium `Chat`.
+
+- Incoming messages are `Received`, outgoing ones (CRM, Business-app echoes) are `Sent`. The subject is "WhatsApp message from/to +<number>". The phone number is not stored in `sender` or `recipients`, because Frappe checks those as email addresses.
+- The text is escaped. A message without text (image, reaction) shows its content type, for example `[image]`.
+- A message that already has an entry (a Meta retry) gets no second one; the key is `message_id` = `whatsapp:<WhatsApp Message name>`.
+- Limits: the card looks like an email card, it also appears in the Emails tab, and its reply buttons open the email composer. Reply from the WhatsApp tab. Media is not attached to the card.
+- Failures are rolled back and written to the Error Log as "WhatsApp timeline entry failed". The webhook still succeeds.
+
+*Email* (`whatsapp_standalone/email_linking.py`, a `before_insert` hook on `Communication`): an email of any email account that is not linked yet is linked to a `CRM Lead` by address. For a received email the sender is matched; for a sent one the recipients and cc.
+
+- It links only when exactly one lead has such an address. With no match, or two leads on one address, the email stays unlinked.
+- It runs before CRM's own handler, so CRM sees a linked email and does not create a second lead.
+- Failures are written to the Error Log as "Email lead link failed"; mail is still saved.
+- Limit: leads only. A deal's contact address is not matched, and mail that came in before this app was updated is not linked.
+
+Remove these two modules and their hooks if CRM shows WhatsApp and shared-mailbox mail in the timeline by itself.
 
 ### Tests
 
 The tests use stub modules, so no site is needed. Run them from the bench directory (the folder that holds `apps/` and `env/`):
 
 ```bash
-env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_fixtures
+env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_whatsapp_timeline whatsapp_standalone.test_email_linking whatsapp_standalone.test_fixtures
 ```

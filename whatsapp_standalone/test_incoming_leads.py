@@ -11,6 +11,8 @@ from whatsapp_standalone.incoming_leads import create_lead_for_incoming_message
 SITE = "example.test"
 NUMBER = "919876543210"
 ERROR_TITLE = "WhatsApp lead create failed"
+NEW_LEAD_NAME = "CRM-LEAD-NEW"
+EXISTING_NAME = "EXISTING"
 NAME_MAX_LENGTH = 140
 
 
@@ -23,9 +25,14 @@ class FakeMessage:
 	def get(self, key, default=None):
 		return self.__dict__.get(key, default)
 
+	def update(self, values):
+		self.__dict__.update(values)
 
-def make_message(sender=NUMBER, message_type="Incoming", profile_name="Asha"):
-	return FakeMessage(**{"name": "MSG-1", "type": message_type, "from": sender, "profile_name": profile_name})
+
+def make_message(sender=NUMBER, message_type="Incoming", profile_name="Asha", **extra):
+	return FakeMessage(
+		**{"name": "MSG-1", "type": message_type, "from": sender, "profile_name": profile_name, **extra}
+	)
 
 
 class TestCreateLeadForIncomingMessage(unittest.TestCase):
@@ -56,10 +63,11 @@ class TestCreateLeadForIncomingMessage(unittest.TestCase):
 
 	def _sql(self, query, values=None, *args, **kwargs):
 		self.events.append("sql")
-		return [("EXISTING",)] if any(f"`tab{doctype}`" in query for doctype in self.existing_in) else []
+		return [(EXISTING_NAME,)] if any(f"`tab{doctype}`" in query for doctype in self.existing_in) else []
 
 	def _get_doc(self, values):
 		doc = MagicMock(values=values)
+		doc.name = NEW_LEAD_NAME
 		doc.insert.side_effect = lambda **kwargs: self.events.append("insert") or self.inserted.append(values)
 		return doc
 
@@ -209,6 +217,53 @@ class TestCreateLeadForIncomingMessage(unittest.TestCase):
 		self.existing_in = {"CRM Lead"}
 		self.run_handler(make_message())
 		self.assertEqual(len(self.inserted), 1)
+
+	# --- linking the message to the lead ----------------------------------------------
+
+	def assert_linked(self, doctype, name):
+		self.frappe.db.set_value.assert_called_once_with(
+			"WhatsApp Message",
+			"MSG-1",
+			{"reference_doctype": doctype, "reference_name": name},
+			update_modified=False,
+		)
+
+	def test_new_lead_is_linked_to_the_message(self):
+		# CRM links a message to a lead while validating it, before this lead exists.
+		message = make_message()
+
+		self.run_handler(message)
+
+		self.assert_linked("CRM Lead", NEW_LEAD_NAME)
+		self.assertEqual((message.reference_doctype, message.reference_name), ("CRM Lead", NEW_LEAD_NAME))
+
+	def test_existing_record_is_linked_to_an_unlinked_message(self):
+		for doctypes, expected in (
+			({"CRM Lead"}, "CRM Lead"),
+			({"CRM Deal"}, "CRM Deal"),
+			({"CRM Lead", "CRM Deal"}, "CRM Lead"),
+		):
+			with self.subTest(doctypes=sorted(doctypes)):
+				self.frappe.db.set_value.reset_mock()
+				self.existing_in = doctypes
+				self.run_handler(make_message())
+				self.assert_linked(expected, EXISTING_NAME)
+
+	def test_message_that_already_has_a_reference_is_not_relinked(self):
+		for existing_in in (set(), {"CRM Lead"}):
+			with self.subTest(existing_in=sorted(existing_in)):
+				self.existing_in = existing_in
+				self.run_handler(make_message(reference_doctype="CRM Deal", reference_name="DEAL-1"))
+				self.frappe.db.set_value.assert_not_called()
+
+	def test_failed_insert_links_nothing(self):
+		self.frappe.get_doc.side_effect = lambda values: MagicMock(
+			insert=MagicMock(side_effect=ValueError("boom"))
+		)
+
+		self.run_handler(make_message())
+
+		self.frappe.db.set_value.assert_not_called()
 
 	# --- locking ---------------------------------------------------------------------
 
