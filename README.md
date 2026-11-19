@@ -78,11 +78,18 @@ The notification reaches the lead owner only if the lead already has an owner wh
 
 Remove this module and its hook when Frappe CRM creates leads from WhatsApp messages by itself.
 
-**Shared-mailbox email in the Activity timeline**
+**WhatsApp and shared-mailbox email in the Activity timeline**
 
-Frappe CRM links an email to a lead only when the reply carries the `#CRM-LEAD-…` tag in its subject. Mail that comes into, or goes out of, a shared mailbox without that tag is unlinked, so it is missing from the Activity and Emails tabs of the lead.
+*WhatsApp* (`whatsapp_standalone/activity_timeline.py`): the Activity tab of a Lead or Deal shows a row for each WhatsApp message, and the Emails tab does not. The module wraps CRM's `crm.api.activities.get_activities` (`override_whitelisted_methods`). CRM runs first, so its permission check applies. The rows are plain text entries, the kind the page draws for "created this lead", so they are not email cards.
 
-WhatsApp messages are not added to the Activity timeline. The Activity tab can draw only emails, comments, calls and versions, so a WhatsApp message there would be an email card, and it would also show in the Emails tab. WhatsApp messages stay in the WhatsApp tab, where reactions show on the message they belong to. A one-time patch (`patches/remove_whatsapp_timeline_entries.py`) deletes the entries an earlier version of this app made.
+- Incoming: `Kai +919535450135 messaged walue.ai on WhatsApp: Hello`.
+- Outgoing, from CRM or the Business app: `<CRM user or account name> sent a WhatsApp message to +919535450135: …`.
+- A reaction: `… reacted 😂 to a WhatsApp message`. A message without text shows its type, for example `[image]`.
+- A deal also shows the messages of its lead. The newest 200 messages are read (`MESSAGE_LIMIT`). Text is plain, on one line, and cut at 300 characters.
+- An error while adding the rows is written to the Error Log as "WhatsApp activity rows failed", and the page still gets CRM's own entries.
+- Limits: the row has the lead icon and no reply buttons, so reply from the WhatsApp tab. A new message shows after the page is refreshed. Only one app can override this CRM method on a site; `custom_crm` overrides the same method, so do not install both on one site.
+- A one-time patch (`patches/remove_whatsapp_timeline_entries.py`) deletes the email-style entries an earlier version of this app made.
+- Meta does not send replies to a WhatsApp Status for numbers connected to Cloud API (Coexistence), so they cannot appear.
 
 *Email* (`whatsapp_standalone/email_linking.py`, a `before_insert` hook on `Communication`): an email of any email account that is not linked yet is linked to a `CRM Lead` by address. For a received email the sender is matched; for a sent one the recipients and cc.
 
@@ -91,12 +98,12 @@ WhatsApp messages are not added to the Activity timeline. The Activity tab can d
 - Failures are written to the Error Log as "Email lead link failed"; mail is still saved.
 - Limit: leads only. A deal's contact address is not matched, and mail that came in before this app was updated is not linked.
 
-Remove this module and its hook if CRM links shared-mailbox mail to leads by itself.
+Remove the email module and its hook if CRM links shared-mailbox mail to leads by itself, and the activity module and its override if CRM shows WhatsApp in the timeline by itself.
 
 ### Tests
 
 The tests use stub modules, so no site is needed. Run them from the bench directory (the folder that holds `apps/` and `env/`):
 
 ```bash
-env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_email_linking whatsapp_standalone.patches.test_remove_whatsapp_timeline_entries whatsapp_standalone.test_fixtures
+env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_email_linking whatsapp_standalone.test_activity_timeline whatsapp_standalone.patches.test_remove_whatsapp_timeline_entries whatsapp_standalone.test_fixtures
 ```

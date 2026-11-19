@@ -84,6 +84,14 @@ class TestHooks(unittest.TestCase):
 		self.assertEqual(handler, "whatsapp_standalone.email_linking.link_email_to_lead")
 		self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
 
+	def test_activities_override_is_registered_and_importable(self):
+		# CRM's activities API is wrapped so the Activity tab gets WhatsApp rows.
+		handler = hooks.override_whitelisted_methods["crm.api.activities.get_activities"]
+
+		module_name, function_name = handler.rsplit(".", 1)
+		self.assertEqual(handler, "whatsapp_standalone.activity_timeline.get_activities")
+		self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
+
 	def test_no_timeline_entry_is_made_for_whatsapp_messages(self):
 		# They showed in the Emails tab of CRM; the WhatsApp tab is where messages belong.
 		self.assertIsInstance(hooks.doc_events["WhatsApp Message"]["after_insert"], str)
