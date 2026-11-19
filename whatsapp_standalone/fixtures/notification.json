@@ -1,0 +1,23 @@
+[
+	{
+		"doctype": "Notification",
+		"name": "New WhatsApp Lead",
+		"subject": "New WhatsApp lead: {{ doc.first_name }}",
+		"document_type": "CRM Lead",
+		"event": "New",
+		"channel": "System Notification",
+		"enabled": 1,
+		"is_standard": 0,
+		"message_type": "Markdown",
+		"condition": "doc.source == \"WhatsApp\"",
+		"message": "{{ doc.first_name }} ({{ doc.mobile_no }}) messaged on WhatsApp.",
+		"recipients": [
+			{
+				"receiver_by_role": "Sales Manager"
+			},
+			{
+				"receiver_by_document_field": "lead_owner"
+			}
+		]
+	}
+]
