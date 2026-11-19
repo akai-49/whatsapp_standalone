@@ -204,9 +204,10 @@ app_license = "mit"
 # Overriding Methods
 # ------------------------------
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "whatsapp_standalone.event.get_events"
-# }
+# Adds WhatsApp rows to the Activity tab of a CRM Lead or Deal. One app can wrap this method per site.
+override_whitelisted_methods = {
+	"crm.api.activities.get_activities": "whatsapp_standalone.activity_timeline.get_activities"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
