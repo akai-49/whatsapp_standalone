@@ -232,8 +232,17 @@ before_request = ["whatsapp_standalone.overrides.crm_whatsapp.use_unchecked_assi
 doc_events = {
 	"WhatsApp Notification Log": {
 		"after_insert": "whatsapp_standalone.echoes.sync_message_echoes",
-	}
+	},
+	"WhatsApp Message": {
+		"after_insert": "whatsapp_standalone.incoming_leads.create_lead_for_incoming_message",
+	},
 }
+
+# Records shipped in whatsapp_standalone/fixtures; imported on install-app and every migrate.
+fixtures = [
+	{"dt": "CRM Lead Source", "filters": [["name", "=", "WhatsApp"]]},
+	{"dt": "Notification", "filters": [["name", "=", "New WhatsApp Lead"]]},
+]
 # after_request = ["whatsapp_standalone.utils.after_request"]
 
 # Job Events
