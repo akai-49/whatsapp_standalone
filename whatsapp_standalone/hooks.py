@@ -234,7 +234,11 @@ doc_events = {
 		"after_insert": "whatsapp_standalone.echoes.sync_message_echoes",
 	},
 	"WhatsApp Message": {
-		"after_insert": "whatsapp_standalone.incoming_leads.create_lead_for_incoming_message",
+		# Order matters: the lead must exist and be linked before the timeline entry is made.
+		"after_insert": [
+			"whatsapp_standalone.incoming_leads.create_lead_for_incoming_message",
+			"whatsapp_standalone.whatsapp_timeline.mirror_message_to_timeline",
+		],
 	},
 }
 

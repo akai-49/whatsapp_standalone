@@ -71,10 +71,24 @@ class TestFixtures(unittest.TestCase):
 
 class TestHooks(unittest.TestCase):
 	def test_incoming_message_handler_is_registered_and_importable(self):
-		handler = hooks.doc_events["WhatsApp Message"]["after_insert"]
+		handler = hooks.doc_events["WhatsApp Message"]["after_insert"][0]
 
 		module_name, function_name = handler.rsplit(".", 1)
 		self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
+
+	def test_timeline_entry_is_made_after_the_lead_exists(self):
+		handlers = hooks.doc_events["WhatsApp Message"]["after_insert"]
+
+		self.assertEqual(
+			handlers,
+			[
+				"whatsapp_standalone.incoming_leads.create_lead_for_incoming_message",
+				"whatsapp_standalone.whatsapp_timeline.mirror_message_to_timeline",
+			],
+		)
+		for handler in handlers:
+			module_name, function_name = handler.rsplit(".", 1)
+			self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
 
 	def test_echo_handler_registration_is_kept(self):
 		self.assertEqual(
