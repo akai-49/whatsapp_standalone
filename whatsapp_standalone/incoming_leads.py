@@ -124,7 +124,7 @@ def _link_message(doc, doctype, name):
 	"""Point the message at its lead or deal.
 
 	CRM does this while validating a message, which is before the lead of a new number exists.
-	Without it the message is missing from the WhatsApp tab and the timeline of the lead.
+	Without it the message is missing from the WhatsApp tab of the lead.
 	"""
 	values = {"reference_doctype": doctype, "reference_name": name}
 	frappe.db.set_value("WhatsApp Message", doc.name, values, update_modified=False)

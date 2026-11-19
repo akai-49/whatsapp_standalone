@@ -71,24 +71,10 @@ class TestFixtures(unittest.TestCase):
 
 class TestHooks(unittest.TestCase):
 	def test_incoming_message_handler_is_registered_and_importable(self):
-		handler = hooks.doc_events["WhatsApp Message"]["after_insert"][0]
+		handler = hooks.doc_events["WhatsApp Message"]["after_insert"]
 
 		module_name, function_name = handler.rsplit(".", 1)
 		self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
-
-	def test_timeline_entry_is_made_after_the_lead_exists(self):
-		handlers = hooks.doc_events["WhatsApp Message"]["after_insert"]
-
-		self.assertEqual(
-			handlers,
-			[
-				"whatsapp_standalone.incoming_leads.create_lead_for_incoming_message",
-				"whatsapp_standalone.whatsapp_timeline.mirror_message_to_timeline",
-			],
-		)
-		for handler in handlers:
-			module_name, function_name = handler.rsplit(".", 1)
-			self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
 
 	def test_email_is_linked_before_crm_looks_at_it(self):
 		# `before_insert`, so CRM's own `after_insert` sees a linked email and makes no second lead.
@@ -97,6 +83,10 @@ class TestHooks(unittest.TestCase):
 		module_name, function_name = handler.rsplit(".", 1)
 		self.assertEqual(handler, "whatsapp_standalone.email_linking.link_email_to_lead")
 		self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
+
+	def test_no_timeline_entry_is_made_for_whatsapp_messages(self):
+		# They showed in the Emails tab of CRM; the WhatsApp tab is where messages belong.
+		self.assertIsInstance(hooks.doc_events["WhatsApp Message"]["after_insert"], str)
 
 	def test_echo_handler_registration_is_kept(self):
 		self.assertEqual(
