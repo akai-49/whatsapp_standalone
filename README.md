@@ -78,17 +78,11 @@ The notification reaches the lead owner only if the lead already has an owner wh
 
 Remove this module and its hook when Frappe CRM creates leads from WhatsApp messages by itself.
 
-**WhatsApp and shared-mailbox email in the Activity timeline**
+**Shared-mailbox email in the Activity timeline**
 
-The Activity tab of a Lead or Deal draws only versions, comments, calls and emails (`Communication` records). WhatsApp messages have their own tab, and emails of a shared mailbox are missing when they are not linked to the lead.
+Frappe CRM links an email to a lead only when the reply carries the `#CRM-LEAD-…` tag in its subject. Mail that comes into, or goes out of, a shared mailbox without that tag is unlinked, so it is missing from the Activity and Emails tabs of the lead.
 
-*WhatsApp* (`whatsapp_standalone/whatsapp_timeline.py`, a second `after_insert` hook on `WhatsApp Message`, run after the lead is created): each message that belongs to a Lead or Deal is saved once as a `Communication` with medium `Chat`.
-
-- Incoming messages are `Received`, outgoing ones (CRM, Business-app echoes) are `Sent`. The subject is "WhatsApp message from/to +<number>". The phone number is not stored in `sender` or `recipients`, because Frappe checks those as email addresses.
-- The text is escaped. A message without text (image, reaction) shows its content type, for example `[image]`.
-- A message that already has an entry (a Meta retry) gets no second one; the key is `message_id` = `whatsapp:<WhatsApp Message name>`.
-- Limits: the card looks like an email card, it also appears in the Emails tab, and its reply buttons open the email composer. Reply from the WhatsApp tab. Media is not attached to the card.
-- Failures are rolled back and written to the Error Log as "WhatsApp timeline entry failed". The webhook still succeeds.
+WhatsApp messages are not added to the Activity timeline. The Activity tab can draw only emails, comments, calls and versions, so a WhatsApp message there would be an email card, and it would also show in the Emails tab. WhatsApp messages stay in the WhatsApp tab, where reactions show on the message they belong to. A one-time patch (`patches/remove_whatsapp_timeline_entries.py`) deletes the entries an earlier version of this app made.
 
 *Email* (`whatsapp_standalone/email_linking.py`, a `before_insert` hook on `Communication`): an email of any email account that is not linked yet is linked to a `CRM Lead` by address. For a received email the sender is matched; for a sent one the recipients and cc.
 
@@ -97,12 +91,12 @@ The Activity tab of a Lead or Deal draws only versions, comments, calls and emai
 - Failures are written to the Error Log as "Email lead link failed"; mail is still saved.
 - Limit: leads only. A deal's contact address is not matched, and mail that came in before this app was updated is not linked.
 
-Remove these two modules and their hooks if CRM shows WhatsApp and shared-mailbox mail in the timeline by itself.
+Remove this module and its hook if CRM links shared-mailbox mail to leads by itself.
 
 ### Tests
 
 The tests use stub modules, so no site is needed. Run them from the bench directory (the folder that holds `apps/` and `env/`):
 
 ```bash
-env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_whatsapp_timeline whatsapp_standalone.test_email_linking whatsapp_standalone.test_fixtures
+env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_email_linking whatsapp_standalone.patches.test_remove_whatsapp_timeline_entries whatsapp_standalone.test_fixtures
 ```
