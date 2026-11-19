@@ -90,6 +90,14 @@ class TestHooks(unittest.TestCase):
 			module_name, function_name = handler.rsplit(".", 1)
 			self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
 
+	def test_email_is_linked_before_crm_looks_at_it(self):
+		# `before_insert`, so CRM's own `after_insert` sees a linked email and makes no second lead.
+		handler = hooks.doc_events["Communication"]["before_insert"]
+
+		module_name, function_name = handler.rsplit(".", 1)
+		self.assertEqual(handler, "whatsapp_standalone.email_linking.link_email_to_lead")
+		self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
+
 	def test_echo_handler_registration_is_kept(self):
 		self.assertEqual(
 			hooks.doc_events["WhatsApp Notification Log"]["after_insert"],

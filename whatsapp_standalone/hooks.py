@@ -233,6 +233,7 @@ doc_events = {
 	"WhatsApp Notification Log": {
 		"after_insert": "whatsapp_standalone.echoes.sync_message_echoes",
 	},
+	"Communication": {"before_insert": "whatsapp_standalone.email_linking.link_email_to_lead"},
 	"WhatsApp Message": {
 		# Order matters: the lead must exist and be linked before the timeline entry is made.
 		"after_insert": [
