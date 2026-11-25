@@ -1,6 +1,6 @@
 ### WhatsApp Standalone
 
-WhatsApp integration fixes and extensions for Frappe CRM: incoming-reply fix, Business-app message sync (Coexistence) and automatic leads from new WhatsApp numbers
+WhatsApp integration extensions for Frappe CRM: Business-app message sync (Coexistence), automatic leads from new WhatsApp numbers, Activity timeline rows, shared-mailbox email linking, and placing the WhatsApp tab after Activity.
 
 ### Installation
 
@@ -34,13 +34,9 @@ mit
 
 ### What it does
 
-**Incoming WhatsApp replies on Frappe CRM version-16**
+**WhatsApp tab right after Activity on Leads and Deals**
 
-With `frappe_whatsapp` and Frappe CRM v16.0.3, a reply from a number that matches a lead or deal is not saved. The webhook runs as Guest, CRM's `notify_agent` checks read permission on the lead, and the request fails with HTTP 403.
-
-This app applies the upstream fix ([frappe/crm#3214](https://github.com/frappe/crm/pull/3214)) at runtime through a `before_request` hook (`whatsapp_standalone/overrides/crm_whatsapp.py`). There is nothing to configure. It adds no Guest permissions, and the hook does nothing when CRM is not installed or already has the fix.
-
-Remove the hook when your CRM version includes frappe/crm#3214.
+By default Frappe CRM places the `WhatsApp` tab near the end of the Lead and Deal tab bar. This app injects a lightweight stylesheet (`whatsapp_standalone/public/css/crm_whatsapp_tab.css`) into `/crm` HTML responses via an `after_request` hook (`whatsapp_standalone/crm_ui.py`) so `WhatsApp` appears immediately after `Activity` on both Leads and Deals (desktop and mobile) without modifying upstream `crm`.
 
 **Messages sent from the WhatsApp Business mobile app (Coexistence)**
 
@@ -105,5 +101,5 @@ Remove the email module and its hook if CRM links shared-mailbox mail to leads b
 The tests use stub modules, so no site is needed. Run them from the bench directory (the folder that holds `apps/` and `env/`):
 
 ```bash
-env/bin/python -m unittest whatsapp_standalone.overrides.test_crm_whatsapp whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_email_linking whatsapp_standalone.test_activity_timeline whatsapp_standalone.patches.test_remove_whatsapp_timeline_entries whatsapp_standalone.test_fixtures
+env/bin/python -m unittest whatsapp_standalone.test_crm_ui whatsapp_standalone.test_echoes whatsapp_standalone.test_incoming_leads whatsapp_standalone.test_email_linking whatsapp_standalone.test_activity_timeline whatsapp_standalone.patches.test_remove_whatsapp_timeline_entries whatsapp_standalone.test_fixtures
 ```
