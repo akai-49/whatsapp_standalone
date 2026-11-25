@@ -102,6 +102,16 @@ class TestHooks(unittest.TestCase):
 			"whatsapp_standalone.echoes.sync_message_echoes",
 		)
 
+	def test_crm_tab_order_after_request_is_registered_and_importable(self):
+		handlers = hooks.after_request
+		self.assertEqual(handlers, ["whatsapp_standalone.crm_ui.inject_crm_tab_order_css"])
+
+		module_name, function_name = handlers[0].rsplit(".", 1)
+		self.assertTrue(callable(getattr(importlib.import_module(module_name), function_name)))
+
+	def test_merged_crm_permission_before_request_hook_is_removed(self):
+		self.assertFalse(hasattr(hooks, "before_request"))
+
 	def test_fixtures_hook_exports_the_shipped_records(self):
 		exported = {entry["dt"]: entry["filters"] for entry in hooks.fixtures}
 

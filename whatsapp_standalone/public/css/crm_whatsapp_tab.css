@@ -1,0 +1,15 @@
+/* Place the WhatsApp tab right after Activity on CRM Lead and Deal pages (desktop and mobile). */
+[role="tablist"]:has(> [role="tab"][id$="-trigger-activity"]):has(> [role="tab"][id$="-trigger-whatsapp"])
+	> [role="tab"][id$="-trigger-details"] {
+	order: -3;
+}
+
+[role="tablist"]:has(> [role="tab"][id$="-trigger-activity"]):has(> [role="tab"][id$="-trigger-whatsapp"])
+	> [role="tab"][id$="-trigger-activity"] {
+	order: -2;
+}
+
+[role="tablist"]:has(> [role="tab"][id$="-trigger-activity"]):has(> [role="tab"][id$="-trigger-whatsapp"])
+	> [role="tab"][id$="-trigger-whatsapp"] {
+	order: -1;
+}

@@ -228,7 +228,6 @@ override_whitelisted_methods = {
 # Request Events
 # ----------------
 # before_request = ["whatsapp_standalone.utils.before_request"]
-before_request = ["whatsapp_standalone.overrides.crm_whatsapp.use_unchecked_assignee_lookup"]
 
 doc_events = {
 	"WhatsApp Notification Log": {
@@ -246,6 +245,7 @@ fixtures = [
 	{"dt": "Notification", "filters": [["name", "=", "New WhatsApp Lead"]]},
 ]
 # after_request = ["whatsapp_standalone.utils.after_request"]
+after_request = ["whatsapp_standalone.crm_ui.inject_crm_tab_order_css"]
 
 # Job Events
 # ----------
